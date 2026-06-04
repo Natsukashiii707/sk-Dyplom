@@ -9,7 +9,6 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-/* ── CSS-змінні ──────────────────────────────────────── */
 :root {
   --bg:        #0a0b0e;
   --surface:   #13141a28;
@@ -47,7 +46,6 @@ body::before {
   z-index: -1;
 }
 
-/* ── Хедер ──────────────────────────────────────────── */
 header {
   width: 100%;
   background: rgba(228,213,213,0.233);
@@ -72,7 +70,6 @@ nav { display: flex; gap: 8px; margin-left: 48px; }
   backdrop-filter: blur(10px); color: #693259;
 }
 
-/* ── Main ───────────────────────────────────────────── */
 main {
   width: 100%; max-width: 600px;
   margin: 0 auto; padding: 0 16px 32px 16px; flex: 1;
@@ -80,7 +77,6 @@ main {
 .tab-content { display: none; }
 .tab-content.active { display: block; }
 
-/* ── Drop-zone ──────────────────────────────────────── */
 .drop-zone {
   border: 2px dashed rgba(255,255,255,0.5);
   border-radius: 12px; padding: 48px 32px;
@@ -125,14 +121,12 @@ main {
 }
 .progress-fill { height: 100%; background: var(--accent); width: 0; transition: width 0.3s; }
 
-/* ── Results grid ───────────────────────────────────── */
 .results-grid {
   display: grid;
   grid-template-columns: 280px 1fr;
   gap: 24px;
 }
 
-/* ── Card ───────────────────────────────────────────── */
 .card {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 12px; overflow: hidden;
@@ -147,7 +141,6 @@ main {
 .card-header .icon { font-size: 16px; }
 .card-body { padding: 20px; }
 
-/* ── Preview ─────────────────────────────────────────── */
 .preview-card { grid-row: 1 / 4; }
 .preview-img {
   width: 100%; aspect-ratio: 1;
@@ -167,7 +160,6 @@ main {
 .meta-label { color: var(--text-dim); font-family: var(--mono); font-size: 11px; }
 .meta-value { font-weight: 600; text-align: right; max-width: 140px; word-break: break-word; }
 
-/* ── AI Score ────────────────────────────────────────── */
 .ai-score-wrap {
   display: flex; flex-direction: column; align-items: center;
   padding: 24px; gap: 12px;
@@ -194,7 +186,6 @@ main {
 .verdict-suspicious { background: rgba(255,179,71,0.12); color: var(--warning); }
 .verdict-ai         { background: rgba(255,59,92,0.12);  color: var(--danger);  }
 
-/* ── Signals ─────────────────────────────────────────── */
 .signal-list { display: flex; flex-direction: column; gap: 8px; padding: 20px; }
 .signal-item {
   display: flex; align-items: flex-start; gap: 10px;
@@ -216,7 +207,6 @@ main {
 .signal-weight.pos { background: rgba(255,59,92,0.15); color: var(--danger); }
 .signal-weight.neg { background: rgba(0,214,143,0.15); color: var(--success); }
 
-/* ── Meta tabs ───────────────────────────────────────── */
 .meta-tabs {
   display: flex; gap: 4px; padding: 12px 20px 0;
   border-bottom: 1px solid var(--border); flex-wrap: wrap;
@@ -234,7 +224,6 @@ main {
 .meta-section { display: none; padding: 20px; }
 .meta-section.active { display: block; }
 
-/* ── EXIF grid ───────────────────────────────────────── */
 .exif-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .exif-item {
   background: var(--surface2); border-radius: var(--radius);
@@ -260,14 +249,12 @@ main {
 .btn-save   { background: var(--accent); color: var(--bg); }
 .btn-cancel { background: var(--surface); color: var(--text-dim); border: 1px solid var(--border); }
 
-/* ── GPS Map — glassmorphism ──────────────────────────── */
 #map-wrap {
   position: relative; border-radius: 14px; overflow: hidden;
   border: 1px solid rgba(255,255,255,0.10);
   box-shadow: 0 8px 32px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.06);
 }
 #map-container { height: 360px; }
-/* Підказка координат поверх карти */
 #map-coords-overlay {
   position: absolute; bottom: 14px; left: 14px; z-index: 800;
   background: rgba(15,16,22,0.62);
@@ -278,7 +265,6 @@ main {
   font-family: var(--mono); font-size: 11px; color: var(--accent);
   display: none; pointer-events: none; line-height: 1.7;
 }
-/* Кнопка "відкрити в Google Maps" */
 #map-gmaps-btn {
   position: absolute; top: 14px; right: 14px; z-index: 800;
   background: rgba(15,16,22,0.62);
@@ -292,9 +278,7 @@ main {
 }
 #map-gmaps-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-/* Leaflet tile-layer — лёгке затемнення щоб вписалося в темну тему */
 .leaflet-tile { filter: brightness(0.70) saturate(0.8) hue-rotate(185deg); }
-/* Leaflet attribution — glassmorphism */
 .leaflet-control-attribution {
   background: rgba(10,11,14,0.55) !important;
   backdrop-filter: blur(8px) !important;
@@ -305,7 +289,6 @@ main {
   font-size: 9px !important;
 }
 .leaflet-control-attribution a { color: var(--accent) !important; }
-/* Zoom buttons */
 .leaflet-control-zoom a {
   background: rgba(15,16,22,0.70) !important;
   backdrop-filter: blur(10px) !important;
@@ -315,7 +298,6 @@ main {
 .leaflet-control-zoom a:hover {
   background: rgba(0,229,255,0.18) !important; color: var(--accent) !important;
 }
-/* Popup */
 .leaflet-popup-content-wrapper {
   background: rgba(15,16,22,0.80) !important;
   backdrop-filter: blur(16px) !important;
@@ -335,7 +317,6 @@ main {
   color: var(--text-muted); font-family: var(--mono); font-size: 12px; gap: 8px;
 }
 
-/* ── History tab ─────────────────────────────────────── */
 .history-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 16px;
 }
@@ -359,7 +340,6 @@ main {
   font-family: var(--mono); font-size: 10px; font-weight: 700;
 }
 
-/* ── Edit history log ────────────────────────────────── */
 .history-log { display: flex; flex-direction: column; gap: 6px; }
 .history-entry {
   background: var(--surface2); border-radius: var(--radius); padding: 10px 12px;
@@ -371,7 +351,6 @@ main {
 .he-new   { color: var(--success); }
 .he-time  { color: var(--text-muted); font-size: 10px; }
 
-/* ── Compare ─────────────────────────────────────────── */
 .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 .compare-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .compare-table th {
@@ -392,7 +371,6 @@ main {
 }
 .accuracy-fill { height: 100%; border-radius: 3px; background: var(--accent); }
 
-/* ── Empty / Toast / Loading ─────────────────────────── */
 .empty-state {
   display: flex; flex-direction: column; align-items: center;
   justify-content: center; padding: 80px 32px; text-align: center;
@@ -426,7 +404,6 @@ main {
 .loading-overlay.show { display: flex; }
 .loading-text { font-family: var(--mono); font-size: 13px; color: var(--accent); }
 
-/* ── Tags / Section titles ───────────────────────────── */
 .tag {
   display: inline-block; padding: 2px 8px; border-radius: 4px;
   font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
@@ -436,13 +413,11 @@ main {
 .section-title { font-size: 24px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.5px; }
 .section-sub   { color: var(--text-dim); font-size: 14px; margin-bottom: 28px; line-height: 1.5; }
 
-/* ── Scrollbar ───────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--surface); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
-/* ── Responsive ──────────────────────────────────────── */
 @media (max-width: 900px) {
   .results-grid    { grid-template-columns: 1fr; }
   .preview-card    { grid-row: auto; }
@@ -473,7 +448,6 @@ main {
 
 <main>
 
-<!-- ══ TAB: ANALYZE ══ -->
 <div id="tab-analyze" class="tab-content active">
 
   <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
@@ -490,18 +464,15 @@ main {
   </div>
   <input type="file" id="file-input" accept="image/*" onchange="handleFile(this.files[0])">
 
-  <!-- Порожній стан -->
   <div class="empty-state" id="empty-state">
     <div class="empty-icon"><img src="icon2.png" style="width:90px;height:90px;opacity:1"></div>
     <div style="font-size:14px;font-weight:700;color:var(--text-dim);">Готовий до аналізу</div>
     <div>Завантажте зображення для отримання метаданих та оцінки ймовірності AI-генерації</div>
   </div>
 
-  <!-- Результати -->
   <div id="results-area" style="display:none; margin-top:24px;">
     <div class="results-grid">
 
-      <!-- Попередній перегляд -->
       <div class="card preview-card">
         <div class="card-header"><span class="icon">🖼️</span> Зображення</div>
         <img id="preview-img" class="preview-img" src="" alt="preview" style="display:none">
@@ -519,7 +490,6 @@ main {
         </div>
       </div>
 
-      <!-- AI детекція -->
       <div class="card">
         <div class="card-header"><span class="icon">📡</span> Детекція AI</div>
         <div class="ai-score-wrap">
@@ -540,7 +510,6 @@ main {
         </div>
       </div>
 
-      <!-- Сигнали -->
       <div class="card">
         <div class="card-header"><span class="icon">⚡</span> Сигнали аналізу</div>
         <div class="signal-list" id="signal-list">
@@ -550,10 +519,8 @@ main {
         </div>
       </div>
 
-      <!-- Метадані — картка на всю ширину -->
       <div class="card" style="grid-column: 1 / -1;">
 
-        <!-- Вкладки -->
         <div class="meta-tabs">
           <button class="meta-tab active" onclick="switchMeta('exif', this)">EXIF</button>
           <button class="meta-tab" onclick="switchMeta('camera', this)">Камера</button>
@@ -564,7 +531,6 @@ main {
           <button class="meta-tab" onclick="switchMeta('history', this)">Редагування</button>
         </div>
 
-        <!-- EXIF (всі поля, клікабельні для редагування) -->
         <div id="meta-exif" class="meta-section active">
           <div style="margin-bottom:12px;font-size:12px;color:var(--text-dim);">
             Натисніть на поле для редагування (тільки JPEG)
@@ -576,35 +542,30 @@ main {
           </div>
         </div>
 
-        <!-- Камера -->
         <div id="meta-camera" class="meta-section">
           <div class="exif-grid" id="camera-grid">
             <div style="color:var(--text-muted);font-family:var(--mono);font-size:12px;grid-column:1/-1;padding:20px;text-align:center;">Дані камери відсутні</div>
           </div>
         </div>
 
-        <!-- Технічний -->
         <div id="meta-technical" class="meta-section">
           <div class="exif-grid" id="technical-grid">
             <div style="color:var(--text-muted);font-family:var(--mono);font-size:12px;grid-column:1/-1;padding:20px;text-align:center;">Технічні дані відсутні</div>
           </div>
         </div>
 
-        <!-- IPTC -->
         <div id="meta-iptc" class="meta-section">
           <div class="exif-grid" id="iptc-grid">
             <div style="color:var(--text-muted);font-family:var(--mono);font-size:12px;grid-column:1/-1;padding:20px;text-align:center;">IPTC-метадані відсутні</div>
           </div>
         </div>
 
-        <!-- XMP -->
         <div id="meta-xmp" class="meta-section">
           <div class="exif-grid" id="xmp-grid">
             <div style="color:var(--text-muted);font-family:var(--mono);font-size:12px;grid-column:1/-1;padding:20px;text-align:center;">XMP-метадані відсутні</div>
           </div>
         </div>
 
-        <!-- GPS -->
         <div id="meta-gps" class="meta-section">
           <div id="gps-info" style="margin-bottom:16px;"></div>
           <div id="map-wrap">
@@ -619,7 +580,6 @@ main {
           </div>
         </div>
 
-        <!-- Історія редагування -->
         <div id="meta-history" class="meta-section">
           <div class="history-log" id="edit-history-log">
             <div style="color:var(--text-muted);font-family:var(--mono);font-size:12px;padding:20px;text-align:center;">Редагувань ще не було</div>
@@ -632,7 +592,6 @@ main {
 
 </div><!-- /tab-analyze -->
 
-<!-- ══ TAB: HISTORY ══ -->
 <div id="tab-history" class="tab-content">
   <div class="section-title">Історія аналізів</div>
   <div class="section-sub">Усі раніше завантажені та проаналізовані зображення</div>
@@ -644,7 +603,6 @@ main {
   </div>
 </div>
 
-<!-- ══ TAB: ABOUT ══ -->
 <div id="tab-about" class="tab-content">
   <div class="section-title">Про систему ImageLens</div>
   <div class="section-sub">Архітектура, технології та принципи роботи</div>
@@ -713,7 +671,6 @@ main {
 
   </div>
 
-  <!-- Порівняльний аналіз -->
   <div class="section-title" style="margin-top:40px;">Порівняльний аналіз</div>
   <div class="section-sub">Порівняння підходів до вилучення метаданих та моделей детекції AI</div>
   <div class="compare-grid">
@@ -764,7 +721,7 @@ main {
     </div>
   </div>
 
-</div><!-- /tab-about -->
+</div>
 
 </main>
 
@@ -775,7 +732,6 @@ main {
 <div class="toast" id="toast"></div>
 
 <script>
-// ── Стан ──────────────────────────────────────────────
 let currentImageId  = null;
 let currentMetadata = null;
 let currentIsJpeg   = false;
@@ -783,7 +739,6 @@ let mapInstance     = null;
 let activeEditEl    = null;
 let activeEditOriginal = null;
 
-// ── Навігація ─────────────────────────────────────────
 function switchTab(tab, btn) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -801,7 +756,6 @@ function switchMeta(section, btn) {
   if (section === 'history' && currentImageId) loadEditHistory();
 }
 
-// ── Toast ─────────────────────────────────────────────
 function showToast(msg, type = 'info') {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -809,13 +763,11 @@ function showToast(msg, type = 'info') {
   setTimeout(() => t.classList.remove('show'), 3500);
 }
 
-// ── Loading ───────────────────────────────────────────
 function setLoading(show, text = 'Аналіз зображення...') {
   document.getElementById('loading-text').textContent = text;
   document.getElementById('loading-overlay').classList.toggle('show', show);
 }
 
-// ── Drag & Drop ───────────────────────────────────────
 const dropZone = document.getElementById('drop-zone');
 dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('dragover'); });
 dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('dragover'));
@@ -826,7 +778,6 @@ dropZone.addEventListener('drop', e => {
   if (file) handleFile(file);
 });
 
-// ── Upload ────────────────────────────────────────────
 async function handleFile(file) {
   if (!file) return;
   if (!file.type.startsWith('image/')) {
@@ -851,7 +802,6 @@ async function handleFile(file) {
   }
 }
 
-// ── Render Results ────────────────────────────────────
 function renderResults(data, file, thumbB64) {
   currentImageId  = data.image_id ?? data.id ?? null;
   currentMetadata = data.metadata ?? {};
@@ -861,7 +811,6 @@ function renderResults(data, file, thumbB64) {
   document.getElementById('empty-state').style.display   = 'none';
   document.getElementById('results-area').style.display  = 'block';
 
-  // Превью
   const previewImg = document.getElementById('preview-img');
   const previewPh  = document.getElementById('preview-placeholder');
   if (thumbB64) {
@@ -874,7 +823,6 @@ function renderResults(data, file, thumbB64) {
     previewImg.style.display = 'none'; previewPh.style.display = 'flex';
   }
 
-  // Інформація про файл
   const fi = currentMetadata.file_info || {};
   document.getElementById('info-name').textContent   = data.original_name || data.filename || '—';
   document.getElementById('info-size').textContent   = formatBytes(data.file_size);
@@ -883,12 +831,10 @@ function renderResults(data, file, thumbB64) {
   document.getElementById('info-mp').textContent     = fi.megapixels ? fi.megapixels + ' MP' : '—';
   document.getElementById('info-mode').textContent   = fi.mode || '—';
 
-  // AI
   const ai = data.ai_analysis || {};
   renderAiScore(ai.score ?? 0);
   renderSignals(ai.signals || []);
 
-  // Метадані по секціях
   renderExifGrid('exif-grid', currentMetadata.exif || {}, 'exif', true);
   renderExifGrid('camera-grid', currentMetadata.camera || {}, 'exif', true);
   renderExifGrid('technical-grid', currentMetadata.technical || {}, 'exif', true);
@@ -897,7 +843,6 @@ function renderResults(data, file, thumbB64) {
   renderGps(currentMetadata.gps || {});
 }
 
-// ── AI Score Ring ─────────────────────────────────────
 function renderAiScore(score) {
   const numEl     = document.getElementById('ai-score-num');
   const ringEl    = document.getElementById('score-ring-fill');
@@ -925,7 +870,6 @@ function renderAiScore(score) {
   }
 }
 
-// ── Signals ───────────────────────────────────────────
 function renderSignals(signals) {
   const list = document.getElementById('signal-list');
   if (!signals.length) {
@@ -944,7 +888,6 @@ function renderSignals(signals) {
   `).join('');
 }
 
-// ── EXIF Grid (з редагуванням) ────────────────────────
 function renderExifGrid(gridId, obj, section, editable) {
   const grid = document.getElementById(gridId);
   const entries = Object.entries(obj);
@@ -969,12 +912,10 @@ function renderExifGrid(gridId, obj, section, editable) {
   }).join('');
 }
 
-// ── Readonly Grid (IPTC, XMP) ─────────────────────────
 function renderReadonlyGrid(gridId, obj) {
   renderExifGrid(gridId, obj, '', false);
 }
 
-// ── Inline Edit ───────────────────────────────────────
 function startEdit(section, field, el) {
   if (activeEditEl) cancelEdit();
   if (!currentImageId || !currentIsJpeg) return;
@@ -1012,7 +953,6 @@ async function saveEdit(section, field) {
       activeEditEl.onclick = function() { startEdit(section, field, capturedEl); };
       activeEditEl = null;
       showToast('Поле "' + field + '" оновлено', 'success');
-      // Оновлюємо локальний стан
       if (data.updated_metadata) {
         currentMetadata = { ...currentMetadata, ...data.updated_metadata };
       }
@@ -1034,7 +974,6 @@ function cancelEdit() {
   activeEditEl = null;
 }
 
-// ── GPS Map ───────────────────────────────────────────
 function renderGps(gps) {
   const container  = document.getElementById('map-container');
   const infoEl     = document.getElementById('gps-info');
@@ -1059,15 +998,12 @@ function renderGps(gps) {
           : '<div></div>'}
       </div>`;
 
-    // Overlay координат
     coordsEl.innerHTML = `📍 ${lat.toFixed(6)}, ${lon.toFixed(6)}${gps.GPSAltitude != null ? `<br>⛰ ${Number(gps.GPSAltitude).toFixed(1)} м` : ''}`;
     coordsEl.style.display = 'block';
 
-    // Google Maps кнопка
     gmapsBtn.href = `https://www.google.com/maps?q=${lat},${lon}`;
     gmapsBtn.style.display = 'block';
 
-    // Leaflet map
     container.innerHTML = '<div id="leaflet-map" style="height:360px;"></div>';
     setTimeout(() => {
       if (mapInstance) { mapInstance.remove(); mapInstance = null; }
@@ -1078,7 +1014,6 @@ function renderGps(gps) {
         maxZoom: 19,
       }).addTo(mapInstance);
 
-      // Кастомний маркер — пульсуючий кружок
       const icon = L.divIcon({
         className: '',
         html: `<div style="
@@ -1116,7 +1051,6 @@ function renderGps(gps) {
   }
 }
 
-// ── Edit History ──────────────────────────────────────
 async function loadEditHistory() {
   if (!currentImageId) return;
   const log = document.getElementById('edit-history-log');
@@ -1140,7 +1074,6 @@ async function loadEditHistory() {
   }
 }
 
-// ── History Tab ───────────────────────────────────────
 async function loadHistory() {
   const grid = document.getElementById('history-grid');
   grid.innerHTML = '<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:40px;text-align:center;grid-column:1/-1;">Завантаження...</div>';
@@ -1175,7 +1108,6 @@ async function loadHistory() {
 }
 
 async function loadImageById(id) {
-  // Перемикаємо вкладку вручну без event
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-analyze').classList.add('active');
@@ -1195,7 +1127,6 @@ async function loadImageById(id) {
   }
 }
 
-// ── Compare ───────────────────────────────────────────
 async function loadCompare() {
   try {
     const res  = await fetch('/api/compare');
@@ -1228,7 +1159,6 @@ async function loadCompare() {
   } catch(e) {}
 }
 
-// ── Utils ─────────────────────────────────────────────
 function formatBytes(b) {
   if (!b) return '—';
   if (b < 1024)    return b + ' B';
@@ -1246,7 +1176,6 @@ function sanitizeId(str) {
   return String(str).replace(/[^a-zA-Z0-9_-]/g,'_');
 }
 
-// ── Init ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
