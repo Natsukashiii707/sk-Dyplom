@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Аналіз метаданих та детекція на AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+/* ── CSS-змінні ──────────────────────────────────────── */
+:root {
+  --bg:        #0a0b0e;
+  --surface:   #13141a28;
+  --surface2:  #1c1e2738;
+  --border:    #2a2d3a;
+  --text:      #e8eaf0;
+  --text-dim:  #ffffff;
+  --text-muted:#ffffff;
+  --accent:    #ffffff;
+  --accent2:   #a78bfa;
+  --success:   #00d68f;
+  --warning:   #ffb347;
+  --danger:    #ff3b5c;
+  --mono:      'Space Mono', monospace;
+  --radius:    6px;
+  --glow:      0 0 20px rgba(0,229,255,0.15);
+}
+
+html { box-sizing: border-box; }
+*, *::before, *::after { box-sizing: inherit; }
+
+body {
+  font-family: 'Syne', Arial, sans-serif;
+  background: url('fon.jpg') no-repeat center center fixed;
+  background-size: cover;
+  color: var(--text);
+  min-height: 100vh;
+  margin: 0; padding: 0;
+  display: flex; flex-direction: column; align-items: center;
+}
+body::before {
+  content: '';
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.2);
+  z-index: -1;
+}
+
+/* ── Хедер ──────────────────────────────────────────── */
+header {
+  width: 100%;
+  background: rgba(228,213,213,0.233);
+  backdrop-filter: blur(13px);
+  border-bottom: 1px solid rgba(201,187,193,0.158);
+  display: flex; align-items: center; justify-content: center;
+  height: 72px; margin-bottom: 32px;
+}
+.logo {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 16px; font-weight: 700; color: #ffffff;
+}
+nav { display: flex; gap: 8px; margin-left: 48px; }
+.nav-btn {
+  background: none; border: none; cursor: pointer;
+  padding: 8px 18px; border-radius: var(--radius);
+  color: #ffffff; font-family: inherit; font-size: 13px;
+  font-weight: 500; transition: background 0.2s, color 0.2s;
+}
+.nav-btn:hover, .nav-btn.active {
+  background: rgba(244,255,239,0.70);
+  backdrop-filter: blur(10px); color: #693259;
+}
+
+/* ── Main ───────────────────────────────────────────── */
+main {
+  width: 100%; max-width: 600px;
+  margin: 0 auto; padding: 0 16px 32px 16px; flex: 1;
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── Drop-zone ──────────────────────────────────────── */
+.drop-zone {
+  border: 2px dashed rgba(255,255,255,0.5);
+  border-radius: 12px; padding: 48px 32px;
+  text-align: center; cursor: pointer;
+  background: var(--surface);
+  margin-bottom: 32px; transition: all 0.3s;
+  position: relative; overflow: hidden;
+}
+.drop-zone::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, rgba(0,229,255,0.05) 0%, transparent 70%);
+  opacity: 0; transition: opacity 0.3s;
+}
+.drop-zone:hover, .drop-zone.dragover {
+  border-color: var(--accent); box-shadow: var(--glow);
+}
+.drop-zone:hover::before, .drop-zone.dragover::before { opacity: 1; }
+.drop-zone.dragover { background: rgba(0,229,255,0.04); }
+.drop-zone.processing { animation: pulse-border 1.5s ease infinite; }
+
+@keyframes pulse-border {
+  0%,100% { border-color: var(--accent); box-shadow: 0 0 0 0 rgba(0,229,255,0.4); }
+  50%      { border-color: var(--accent); box-shadow: 0 0 0 8px rgba(0,229,255,0); }
+}
+
+.drop-icon { font-size: 48px; margin-bottom: 12px; }
+.drop-title { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+.drop-sub { color: var(--text-dim); font-family: var(--mono); font-size: 12px; }
+
+.upload-btn {
+  display: inline-block; margin-top: 20px; padding: 12px 28px;
+  border-radius: var(--radius); background: var(--accent); color: var(--bg);
+  font-family: var(--mono); font-size: 13px; font-weight: 700;
+  cursor: pointer; border: none; transition: all 0.2s; letter-spacing: 0.05em;
+}
+.upload-btn:hover { background: #33eaff; transform: translateY(-1px); }
+#file-input { display: none; }
+
+.progress-bar {
+  width: 100%; height: 3px; background: var(--border);
+  border-radius: 2px; margin-top: 16px; overflow: hidden; display: none;
+}
+.progress-fill { height: 100%; background: var(--accent); width: 0; transition: width 0.3s; }
+
+/* ── Results grid ───────────────────────────────────── */
+.results-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+}
+
+/* ── Card ───────────────────────────────────────────── */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; overflow: hidden;
+}
+.card-header {
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-dim);
+  background: rgba(193,178,167,0.74);
+}
+.card-header .icon { font-size: 16px; }
+.card-body { padding: 20px; }
+
+/* ── Preview ─────────────────────────────────────────── */
+.preview-card { grid-row: 1 / 4; }
+.preview-img {
+  width: 100%; aspect-ratio: 1;
+  object-fit: contain; background: #0c0e12; display: block;
+}
+.preview-placeholder {
+  width: 100%; aspect-ratio: 1;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; background: #0c0e12;
+  color: var(--text-muted); font-family: var(--mono); font-size: 12px; gap: 8px;
+}
+.meta-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.meta-row:last-child { border-bottom: none; }
+.meta-label { color: var(--text-dim); font-family: var(--mono); font-size: 11px; }
+.meta-value { font-weight: 600; text-align: right; max-width: 140px; word-break: break-word; }
+
+/* ── AI Score ────────────────────────────────────────── */
+.ai-score-wrap {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 24px; gap: 12px;
+}
+.score-ring { position: relative; width: 140px; height: 140px; }
+.score-ring svg { transform: rotate(-90deg); }
+.score-ring-bg { fill: none; stroke: var(--border); stroke-width: 8; }
+.score-ring-fill {
+  fill: none; stroke-width: 8; stroke-linecap: round;
+  stroke-dasharray: 377; stroke-dashoffset: 377;
+  transition: stroke-dashoffset 1s ease, stroke 0.5s ease;
+}
+.score-center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.score-number { font-size: 36px; font-weight: 800; line-height: 1; font-family: var(--mono); }
+.score-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; }
+.score-verdict {
+  font-size: 14px; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase; padding: 6px 16px; border-radius: 100px;
+}
+.verdict-real       { background: rgba(0,214,143,0.12); color: var(--success); }
+.verdict-suspicious { background: rgba(255,179,71,0.12); color: var(--warning); }
+.verdict-ai         { background: rgba(255,59,92,0.12);  color: var(--danger);  }
+
+/* ── Signals ─────────────────────────────────────────── */
+.signal-list { display: flex; flex-direction: column; gap: 8px; padding: 20px; }
+.signal-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px; border-radius: var(--radius);
+  background: var(--surface2); font-size: 12px;
+}
+.signal-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
+.signal-dot.danger  { background: var(--danger);  box-shadow: 0 0 8px rgba(255,59,92,0.5); }
+.signal-dot.warning { background: var(--warning); box-shadow: 0 0 8px rgba(255,179,71,0.4); }
+.signal-dot.good    { background: var(--success); box-shadow: 0 0 8px rgba(0,214,143,0.4); }
+.signal-dot.info    { background: var(--accent);  box-shadow: 0 0 8px rgba(0,229,255,0.3); }
+.signal-text { flex: 1; }
+.signal-name { font-weight: 700; margin-bottom: 2px; }
+.signal-desc { color: var(--text-dim); line-height: 1.4; }
+.signal-weight {
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  flex-shrink: 0; padding: 2px 6px; border-radius: 4px;
+}
+.signal-weight.pos { background: rgba(255,59,92,0.15); color: var(--danger); }
+.signal-weight.neg { background: rgba(0,214,143,0.15); color: var(--success); }
+
+/* ── Meta tabs ───────────────────────────────────────── */
+.meta-tabs {
+  display: flex; gap: 4px; padding: 12px 20px 0;
+  border-bottom: 1px solid var(--border); flex-wrap: wrap;
+}
+.meta-tab {
+  padding: 8px 14px; border-radius: var(--radius) var(--radius) 0 0;
+  background: none; border: none; cursor: pointer;
+  color: var(--text-dim); font-family: var(--mono); font-size: 11px;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  transition: all 0.15s; border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.meta-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.meta-tab:hover  { color: var(--text); }
+
+.meta-section { display: none; padding: 20px; }
+.meta-section.active { display: block; }
+
+/* ── EXIF grid ───────────────────────────────────────── */
+.exif-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.exif-item {
+  background: var(--surface2); border-radius: var(--radius);
+  padding: 10px 12px; cursor: pointer;
+  transition: all 0.15s; border: 1px solid transparent;
+}
+.exif-item:hover  { border-color: var(--accent); }
+.exif-item.editing { border-color: var(--accent); background: rgba(0,229,255,0.05); }
+.exif-item.readonly { cursor: default; }
+.exif-key { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-bottom: 4px; }
+.exif-val { font-size: 12px; font-weight: 600; word-break: break-word; }
+
+.edit-input {
+  width: 100%; background: var(--surface); border: 1px solid var(--accent);
+  border-radius: 4px; color: var(--text); padding: 4px 8px;
+  font-family: var(--mono); font-size: 12px; outline: none; margin-top: 4px;
+}
+.edit-actions { display: flex; gap: 6px; margin-top: 6px; }
+.btn-save, .btn-cancel {
+  padding: 4px 10px; border-radius: 4px; border: none; cursor: pointer;
+  font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+}
+.btn-save   { background: var(--accent); color: var(--bg); }
+.btn-cancel { background: var(--surface); color: var(--text-dim); border: 1px solid var(--border); }
+
+/* ── GPS Map — glassmorphism ──────────────────────────── */
+#map-wrap {
+  position: relative; border-radius: 14px; overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.06);
+}
+#map-container { height: 360px; }
+/* Підказка координат поверх карти */
+#map-coords-overlay {
+  position: absolute; bottom: 14px; left: 14px; z-index: 800;
+  background: rgba(15,16,22,0.62);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border: 1px solid rgba(0,229,255,0.25);
+  border-radius: 10px; padding: 10px 16px;
+  font-family: var(--mono); font-size: 11px; color: var(--accent);
+  display: none; pointer-events: none; line-height: 1.7;
+}
+/* Кнопка "відкрити в Google Maps" */
+#map-gmaps-btn {
+  position: absolute; top: 14px; right: 14px; z-index: 800;
+  background: rgba(15,16,22,0.62);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 8px; padding: 7px 13px;
+  font-family: var(--mono); font-size: 10px; color: var(--text);
+  cursor: pointer; display: none; text-decoration: none;
+  transition: border-color 0.2s, color 0.2s;
+}
+#map-gmaps-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Leaflet tile-layer — лёгке затемнення щоб вписалося в темну тему */
+.leaflet-tile { filter: brightness(0.70) saturate(0.8) hue-rotate(185deg); }
+/* Leaflet attribution — glassmorphism */
+.leaflet-control-attribution {
+  background: rgba(10,11,14,0.55) !important;
+  backdrop-filter: blur(8px) !important;
+  border-radius: 6px 0 0 0 !important;
+  color: var(--text-muted) !important;
+  border-top: 1px solid rgba(255,255,255,0.07) !important;
+  border-left: 1px solid rgba(255,255,255,0.07) !important;
+  font-size: 9px !important;
+}
+.leaflet-control-attribution a { color: var(--accent) !important; }
+/* Zoom buttons */
+.leaflet-control-zoom a {
+  background: rgba(15,16,22,0.70) !important;
+  backdrop-filter: blur(10px) !important;
+  color: var(--text) !important;
+  border-color: rgba(255,255,255,0.12) !important;
+}
+.leaflet-control-zoom a:hover {
+  background: rgba(0,229,255,0.18) !important; color: var(--accent) !important;
+}
+/* Popup */
+.leaflet-popup-content-wrapper {
+  background: rgba(15,16,22,0.80) !important;
+  backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(0,229,255,0.25) !important;
+  border-radius: 10px !important; color: var(--text) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+}
+.leaflet-popup-tip { background: rgba(15,16,22,0.80) !important; }
+
+.map-placeholder {
+  height: 360px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: rgba(28,30,39,0.5);
+  backdrop-filter: blur(8px);
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.07);
+  color: var(--text-muted); font-family: var(--mono); font-size: 12px; gap: 8px;
+}
+
+/* ── History tab ─────────────────────────────────────── */
+.history-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 16px;
+}
+.history-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden; cursor: pointer; transition: all 0.2s;
+}
+.history-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--glow); }
+.history-thumb {
+  width: 100%; height: 140px; object-fit: cover;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface2); font-size: 32px; color: var(--text-muted);
+}
+.history-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.history-info { padding: 12px; }
+.history-name { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.history-meta { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 4px; }
+.history-score {
+  display: inline-block; margin-top: 6px;
+  padding: 2px 8px; border-radius: 100px;
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+}
+
+/* ── Edit history log ────────────────────────────────── */
+.history-log { display: flex; flex-direction: column; gap: 6px; }
+.history-entry {
+  background: var(--surface2); border-radius: var(--radius); padding: 10px 12px;
+  font-family: var(--mono); font-size: 11px;
+  display: grid; grid-template-columns: 140px 1fr 1fr auto; gap: 8px; align-items: center;
+}
+.he-field { color: var(--accent); }
+.he-old   { color: var(--danger);  text-decoration: line-through; }
+.he-new   { color: var(--success); }
+.he-time  { color: var(--text-muted); font-size: 10px; }
+
+/* ── Compare ─────────────────────────────────────────── */
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.compare-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.compare-table th {
+  padding: 10px 12px; text-align: left; background: var(--surface2);
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-dim); border-bottom: 1px solid var(--border);
+}
+.compare-table td {
+  padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle;
+}
+.compare-table tr:last-child td { border-bottom: none; }
+.compare-table tr:hover td { background: rgba(255,255,255,0.02); }
+.check { color: var(--success); }
+.cross { color: var(--danger); }
+.accuracy-bar {
+  height: 6px; border-radius: 3px; background: var(--border);
+  width: 80px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 6px;
+}
+.accuracy-fill { height: 100%; border-radius: 3px; background: var(--accent); }
+
+/* ── Empty / Toast / Loading ─────────────────────────── */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 80px 32px; text-align: center;
+  gap: 12px; color: var(--text-muted); font-family: var(--mono); font-size: 12px;
+}
+.empty-icon { font-size: 48px; opacity: 0.3; }
+
+.toast {
+  position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px 20px;
+  font-family: var(--mono); font-size: 12px;
+  transform: translateY(100px); opacity: 0; transition: all 0.3s; max-width: 320px;
+}
+.toast.show    { transform: translateY(0); opacity: 1; }
+.toast.success { border-color: var(--success); color: var(--success); }
+.toast.error   { border-color: var(--danger);  color: var(--danger);  }
+.toast.info    { border-color: var(--accent);  color: var(--accent);  }
+
+.spinner {
+  width: 32px; height: 32px; border: 3px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-overlay {
+  display: none; position: fixed; inset: 0; z-index: 9998;
+  background: rgba(10,11,14,0.7); backdrop-filter: blur(4px);
+  align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+}
+.loading-overlay.show { display: flex; }
+.loading-text { font-family: var(--mono); font-size: 13px; color: var(--accent); }
+
+/* ── Tags / Section titles ───────────────────────────── */
+.tag {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+}
+.tag-accent { background: rgba(0,229,255,0.1); color: var(--accent); }
+.tag-dim    { background: var(--surface2); color: var(--text-dim); }
+.section-title { font-size: 24px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.5px; }
+.section-sub   { color: var(--text-dim); font-size: 14px; margin-bottom: 28px; line-height: 1.5; }
+
+/* ── Scrollbar ───────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ── Responsive ──────────────────────────────────────── */
+@media (max-width: 900px) {
+  .results-grid    { grid-template-columns: 1fr; }
+  .preview-card    { grid-row: auto; }
+  .exif-grid       { grid-template-columns: 1fr; }
+  .compare-grid    { grid-template-columns: 1fr; }
+  .history-entry   { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 700px) {
+  main { max-width: 100%; padding: 0 4px 32px 4px; }
+  .drop-zone { padding: 32px 8px; }
+  nav { margin-left: 12px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <img src="logo2.png" alt="logo" style="width:70px;height:70px;border-radius:8px;">
+    <span>Метадані зображень</span>
+  </div>
+  <nav>
+    <button class="nav-btn active" onclick="switchTab('analyze', this)">Аналіз</button>
+    <button class="nav-btn" onclick="switchTab('history', this)">Історія</button>
+    <button class="nav-btn" onclick="switchTab('about', this)">Про систему</button>
+  </nav>
+</header>
+
+<main>
+
+<!-- ══ TAB: ANALYZE ══ -->
+<div id="tab-analyze" class="tab-content active">
+
+  <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+    <div class="drop-icon"><img src="icon.png" style="width:80px;height:80px;"></div>
+    <div class="drop-title">Перетягніть зображення сюди</div>
+    <div class="drop-sub">або натисніть для вибору файлу</div>
+    <div class="drop-sub" style="margin-top:6px">JPEG · PNG · TIFF · WebP · BMP · GIF · HEIC — до 50 МБ</div>
+    <button class="upload-btn" onclick="event.stopPropagation(); document.getElementById('file-input').click()">
+      Вибрати файл
+    </button>
+    <div class="progress-bar" id="progress-bar">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+  </div>
+  <input type="file" id="file-input" accept="image/*" onchange="handleFile(this.files[0])">
+
+  <!-- Порожній стан -->
+  <div class="empty-state" id="empty-state">
+    <div class="empty-icon"><img src="icon2.png" style="width:90px;height:90px;opacity:1"></div>
+    <div style="font-size:14px;font-weight:700;color:var(--text-dim);">Готовий до аналізу</div>
+    <div>Завантажте зображення для отримання метаданих та оцінки ймовірності AI-генерації</div>
+  </div>
+
+  <!-- Результати -->
+  <div id="results-area" style="display:none; margin-top:24px;">
+    <div class="results-grid">
+
+      <!-- Попередній перегляд -->
+      <div class="card preview-card">
+        <div class="card-header"><span class="icon">🖼️</span> Зображення</div>
+        <img id="preview-img" class="preview-img" src="" alt="preview" style="display:none">
+        <div class="preview-placeholder" id="preview-placeholder" style="display:none">
+          <span style="font-size:32px">🖼️</span>
+          <span>Немає превью</span>
+        </div>
+        <div class="card-body">
+          <div class="meta-row"><span class="meta-label">Файл</span>      <span class="meta-value" id="info-name">—</span></div>
+          <div class="meta-row"><span class="meta-label">Розмір</span>    <span class="meta-value" id="info-size">—</span></div>
+          <div class="meta-row"><span class="meta-label">Роздільність</span><span class="meta-value" id="info-dims">—</span></div>
+          <div class="meta-row"><span class="meta-label">Формат</span>    <span class="meta-value" id="info-format">—</span></div>
+          <div class="meta-row"><span class="meta-label">Мегапікселі</span><span class="meta-value" id="info-mp">—</span></div>
+          <div class="meta-row"><span class="meta-label">Режим кольору</span><span class="meta-value" id="info-mode">—</span></div>
+        </div>
+      </div>
+
+      <!-- AI детекція -->
+      <div class="card">
+        <div class="card-header"><span class="icon">📡</span> Детекція AI</div>
+        <div class="ai-score-wrap">
+          <div class="score-ring">
+            <svg width="140" height="140" viewBox="0 0 140 140">
+              <circle class="score-ring-bg"   cx="70" cy="70" r="60"/>
+              <circle class="score-ring-fill" id="score-ring-fill" cx="70" cy="70" r="60"/>
+            </svg>
+            <div class="score-center">
+              <span class="score-number" id="ai-score-num">—</span>
+              <span class="score-label">AI ризик</span>
+            </div>
+          </div>
+          <div class="score-verdict" id="ai-verdict">Завантажте зображення</div>
+          <div id="ai-summary" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:center;line-height:1.5;">
+            Завантажте зображення для аналізу
+          </div>
+        </div>
+      </div>
+
+      <!-- Сигнали -->
+      <div class="card">
+        <div class="card-header"><span class="icon">⚡</span> Сигнали аналізу</div>
+        <div class="signal-list" id="signal-list">
+          <div style="color:var(--text-muted);font-family:var(--mono);font-size:12px;padding:20px;text-align:center;">
+            Сигнали з'являться після завантаження зображення
+          </div>
+        </div>
+      </div>
+
+      <!-- Метадані — картка на всю ширину -->
+      <div class="card" style="grid-column: 1 / -1;">
+
+        <!-- Вкладки -->
+        <div class="meta-tabs">
+          <button class="meta-tab active" onclick="switchMeta('exif', this)">EXIF</button>
+          <button class="meta-tab" onclick="switchMeta('camera', this)">Камера</button>
+          <button class="meta-tab" onclick="switchMeta('technical', this)">Технічний</button>
+          <button class="meta-tab" onclick="switchMeta('iptc', this)">IPTC</button>
+          <button class="meta-tab" onclick="switchMeta('xmp', this)">XMP</button>
+          <button class="meta-tab" onclick="switchMeta('gps', this)">GPS</button>
+          <button class="meta-tab" onclick="switchMeta('history', this)">Редагування</button>
+        </div>
+
+        <!-- EXIF (всі поля, клікабельні для редагування) -->
+        <div id="meta-exif" class="meta-section active">
+          <div style="margin-bottom:12px;font-size:12px;color:var(--text-dim);">
+            Натисніть на поле для редагування (тільки JPEG)
+          </div>
+          <div class="exif-grid" id="exif-grid">
+            <div style="color:var(--text-muted);font-family:var(--mono);font-size:12px;grid-column:1/-1;padding:20px;text-align:center;">
+              EXIF-дані відсутні або зображення не завантажено
+            </div>
+          </div>
+        </div>
+
+        <!-- Камера -->
+        <div id="meta-camera" class="meta-section">
+          <div class="exif-grid" id="camera-grid">
+            <div style="color:var(--text-muted);font-family:var(--mono);font-size:12px;grid-column:1/-1;padding:20px;text-align:center;">Дані камери відсутні</div>
+          </div>
+        </div>
+
+        <!-- Технічний -->
+        <div id="meta-technical" class="meta-section">
+          <div class="exif-grid" id="technical-grid">
+            <div style="color:var(--text-muted);font-family:var(--mono);font-size:12px;grid-column:1/-1;padding:20px;text-align:center;">Технічні дані відсутні</div>
+          </div>
+        </div>
+
+        <!-- IPTC -->
+        <div id="meta-iptc" class="meta-section">
+          <div class="exif-grid" id="iptc-grid">
+            <div style="color:var(--text-muted);font-family:var(--mono);font-size:12px;grid-column:1/-1;padding:20px;text-align:center;">IPTC-метадані відсутні</div>
+          </div>
+        </div>
+
+        <!-- XMP -->
+        <div id="meta-xmp" class="meta-section">
+          <div class="exif-grid" id="xmp-grid">
+            <div style="color:var(--text-muted);font-family:var(--mono);font-size:12px;grid-column:1/-1;padding:20px;text-align:center;">XMP-метадані відсутні</div>
+          </div>
+        </div>
+
+        <!-- GPS -->
+        <div id="meta-gps" class="meta-section">
+          <div id="gps-info" style="margin-bottom:16px;"></div>
+          <div id="map-wrap">
+            <div id="map-container">
+              <div class="map-placeholder">
+                <span style="font-size:32px">🗺️</span>
+                <span>GPS-координати не знайдено</span>
+              </div>
+            </div>
+            <div id="map-coords-overlay"></div>
+            <a id="map-gmaps-btn" target="_blank" rel="noopener">↗ Google Maps</a>
+          </div>
+        </div>
+
+        <!-- Історія редагування -->
+        <div id="meta-history" class="meta-section">
+          <div class="history-log" id="edit-history-log">
+            <div style="color:var(--text-muted);font-family:var(--mono);font-size:12px;padding:20px;text-align:center;">Редагувань ще не було</div>
+          </div>
+        </div>
+
+      </div><!-- /card metadata -->
+    </div><!-- /results-grid -->
+  </div><!-- /results-area -->
+
+</div><!-- /tab-analyze -->
+
+<!-- ══ TAB: HISTORY ══ -->
+<div id="tab-history" class="tab-content">
+  <div class="section-title">Історія аналізів</div>
+  <div class="section-sub">Усі раніше завантажені та проаналізовані зображення</div>
+  <div class="history-grid" id="history-grid">
+    <div class="empty-state" style="grid-column:1/-1;">
+      <div class="empty-icon">📂</div>
+      <div>Ще не аналізовано жодного зображення</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TAB: ABOUT ══ -->
+<div id="tab-about" class="tab-content">
+  <div class="section-title">Про систему ImageLens</div>
+  <div class="section-sub">Архітектура, технології та принципи роботи</div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+
+    <div class="card">
+      <div class="card-header"><span class="icon">🏗️</span> Архітектура</div>
+      <div class="card-body" style="font-size:13px;line-height:1.8;color:var(--text-dim);">
+        <div style="background:var(--surface2);border-radius:8px;padding:16px;font-family:var(--mono);font-size:11px;color:var(--accent);margin-bottom:16px;">
+          Browser → Flask REST API → PIL/Pillow → SQLite<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Leaflet.js (GPS Map)
+        </div>
+        <p>Клієнт надсилає зображення через <strong style="color:var(--text)">multipart/form-data</strong> на Flask-бекенд.</p>
+        <p style="margin-top:8px;">Бекенд вилучає метадані через <strong style="color:var(--text)">PIL/Pillow ExifTags</strong>, обчислює AI-оцінку за евристичними сигналами та зберігає результат у <strong style="color:var(--text)">SQLite</strong>.</p>
+        <p style="margin-top:8px;">GPS-координати відображаються через <strong style="color:var(--text)">Leaflet.js + OpenStreetMap</strong>.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="icon">⚙️</span> Технічний стек</div>
+      <div class="card-body">
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="meta-row"><span class="meta-label">Фронтенд</span> <span class="meta-value"><span class="tag tag-accent">HTML5</span> <span class="tag tag-accent">CSS3</span> <span class="tag tag-accent">JS ES6</span></span></div>
+          <div class="meta-row"><span class="meta-label">Бекенд</span>   <span class="meta-value"><span class="tag tag-accent">Python 3</span> <span class="tag tag-accent">Flask</span></span></div>
+          <div class="meta-row"><span class="meta-label">База даних</span><span class="meta-value"><span class="tag tag-accent">SQLite 3</span></span></div>
+          <div class="meta-row"><span class="meta-label">Метадані</span> <span class="meta-value"><span class="tag tag-accent">PIL/Pillow</span> <span class="tag tag-accent">piexif</span></span></div>
+          <div class="meta-row"><span class="meta-label">Карти</span>    <span class="meta-value"><span class="tag tag-accent">Leaflet.js</span> <span class="tag tag-accent">OSM</span></span></div>
+          <div class="meta-row"><span class="meta-label">Шрифти</span>   <span class="meta-value">Syne + Space Mono</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="icon">🔍</span> Алгоритм детекції AI</div>
+      <div class="card-body" style="font-size:12px;line-height:1.7;color:var(--text-dim);">
+        <p style="margin-bottom:12px;">Система використовує <strong style="color:var(--text)">5 евристичних сигналів</strong> з ваговими коефіцієнтами:</p>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div class="signal-item"><div class="signal-dot warning"></div><div class="signal-text"><div class="signal-name">Відсутність EXIF (+25)</div><div class="signal-desc">AI-зображення зазвичай не мають даних камери</div></div></div>
+          <div class="signal-item"><div class="signal-dot danger"></div><div class="signal-text"><div class="signal-name">AI-інструмент у Software (+40)</div><div class="signal-desc">«Stable Diffusion», «Midjourney» у полі EXIF Software</div></div></div>
+          <div class="signal-item"><div class="signal-dot danger"></div><div class="signal-text"><div class="signal-name">XMP CreatorTool (+35)</div><div class="signal-desc">Ідентифікатор AI-інструменту в XMP-метаданих</div></div></div>
+          <div class="signal-item"><div class="signal-dot warning"></div><div class="signal-text"><div class="signal-name">Стандартні AI-розміри (+12)</div><div class="signal-desc">512×512, 1024×1024, 768×1344 та інші типові canvas</div></div></div>
+          <div class="signal-item"><div class="signal-dot warning"></div><div class="signal-text"><div class="signal-name">Відсутні поля камери (+18)</div><div class="signal-desc">Немає дати, моделі та об'єктиву одночасно</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="icon">📐</span> Схема бази даних</div>
+      <div class="card-body">
+        <div style="font-family:var(--mono);font-size:11px;background:var(--surface2);border-radius:8px;padding:16px;line-height:1.8;color:var(--accent);">
+          <div style="color:var(--text-dim);margin-bottom:8px;">TABLE images</div>
+          id · filename · original_name<br>
+          file_size · mime_type<br>
+          width · height · upload_time<br>
+          metadata_json · ai_score<br>
+          ai_analysis_json<br><br>
+          <div style="color:var(--text-dim);margin-bottom:8px;">TABLE metadata_edits</div>
+          id · image_id → images.id<br>
+          field_name · old_value<br>
+          new_value · edit_time
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Порівняльний аналіз -->
+  <div class="section-title" style="margin-top:40px;">Порівняльний аналіз</div>
+  <div class="section-sub">Порівняння підходів до вилучення метаданих та моделей детекції AI</div>
+  <div class="compare-grid">
+    <div class="card">
+      <div class="card-header"><span class="icon">📊</span> Вилучення метаданих</div>
+      <div style="padding:0 0 20px 0;overflow-x:auto;">
+        <table class="compare-table">
+          <thead><tr><th>Підхід</th><th>Швидкість</th><th>EXIF</th><th>IPTC</th><th>XMP</th><th>Приватність</th><th>Вартість</th></tr></thead>
+          <tbody id="metadata-compare-body">
+            <tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted);">Завантаження...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="icon">📡</span> Моделі детекції AI</div>
+      <div style="padding:0 0 20px 0;overflow-x:auto;">
+        <table class="compare-table">
+          <thead><tr><th>Модель</th><th>Точність</th><th>Швидкість</th><th>Хибні +</th><th>Вартість</th></tr></thead>
+          <tbody id="ai-compare-body">
+            <tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">Завантаження...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card" style="grid-column:1/-1;">
+      <div class="card-header"><span class="icon">💡</span> Висновки та рекомендації</div>
+      <div class="card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div>
+          <div style="font-weight:700;margin-bottom:8px;color:var(--accent);font-size:13px;">📍 МЕТАДАНІ</div>
+          <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--text-dim);line-height:1.5;">
+            <li>✅ <strong style="color:var(--text)">PIL/Pillow</strong> — найкращий вибір для швидкого локального аналізу</li>
+            <li>✅ <strong style="color:var(--text)">ExifTool</strong> — максимальна повнота (500+ форматів, повна XMP/IPTC)</li>
+            <li>⚠️ <strong style="color:var(--text)">Google Cloud Vision</strong> — виправданий при потребі AI-збагачення</li>
+            <li>❌ <strong style="color:var(--text)">AWS Rekognition</strong> — не підтримує XMP/IPTC</li>
+          </ul>
+        </div>
+        <div>
+          <div style="font-weight:700;margin-bottom:8px;color:var(--accent2);font-size:13px;">📡 ДЕТЕКЦІЯ AI</div>
+          <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--text-dim);line-height:1.5;">
+            <li>✅ <strong style="color:var(--text)">Hive AI</strong> — найвища точність (92%), для виробничих систем</li>
+            <li>✅ <strong style="color:var(--text)">AI or Not</strong> — баланс точності та вартості</li>
+            <li>⚠️ <strong style="color:var(--text)">CNNDetection</strong> — безкоштовно, але потребує GPU</li>
+            <li>💡 <strong style="color:var(--text)">Метадата-евристика</strong> — для первинного фільтрування</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /tab-about -->
+
+</main>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">Аналіз зображення...</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Стан ──────────────────────────────────────────────
+let currentImageId  = null;
+let currentMetadata = null;
+let currentIsJpeg   = false;
+let mapInstance     = null;
+let activeEditEl    = null;
+let activeEditOriginal = null;
+
+// ── Навігація ─────────────────────────────────────────
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (tab === 'history') loadHistory();
+  if (tab === 'about')   loadCompare();
+}
+
+function switchMeta(section, btn) {
+  document.querySelectorAll('.meta-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.meta-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('meta-' + section).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (section === 'history' && currentImageId) loadEditHistory();
+}
+
+// ── Toast ─────────────────────────────────────────────
+function showToast(msg, type = 'info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ── Loading ───────────────────────────────────────────
+function setLoading(show, text = 'Аналіз зображення...') {
+  document.getElementById('loading-text').textContent = text;
+  document.getElementById('loading-overlay').classList.toggle('show', show);
+}
+
+// ── Drag & Drop ───────────────────────────────────────
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+});
+
+// ── Upload ────────────────────────────────────────────
+async function handleFile(file) {
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    showToast('Будь ласка, завантажте файл зображення', 'error');
+    return;
+  }
+  dropZone.classList.add('processing');
+  setLoading(true, 'Завантаження та аналіз зображення...');
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const res  = await fetch('/api/upload', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (data.error) { showToast('Помилка: ' + data.error, 'error'); return; }
+    renderResults(data, file, data.thumbnail);
+    showToast('Аналіз завершено успішно', 'success');
+  } catch (err) {
+    showToast("Помилка з'єднання: " + err.message, 'error');
+  } finally {
+    setLoading(false);
+    dropZone.classList.remove('processing');
+  }
+}
+
+// ── Render Results ────────────────────────────────────
+function renderResults(data, file, thumbB64) {
+  currentImageId  = data.image_id ?? data.id ?? null;
+  currentMetadata = data.metadata ?? {};
+  const fmt = (currentMetadata.file_info?.format || '').toUpperCase();
+  currentIsJpeg   = fmt === 'JPEG' || fmt === 'JPG';
+
+  document.getElementById('empty-state').style.display   = 'none';
+  document.getElementById('results-area').style.display  = 'block';
+
+  // Превью
+  const previewImg = document.getElementById('preview-img');
+  const previewPh  = document.getElementById('preview-placeholder');
+  if (thumbB64) {
+    previewImg.src = thumbB64; previewImg.style.display = 'block'; previewPh.style.display = 'none';
+  } else if (file) {
+    const reader = new FileReader();
+    reader.onload = e => { previewImg.src = e.target.result; previewImg.style.display = 'block'; previewPh.style.display = 'none'; };
+    reader.readAsDataURL(file);
+  } else {
+    previewImg.style.display = 'none'; previewPh.style.display = 'flex';
+  }
+
+  // Інформація про файл
+  const fi = currentMetadata.file_info || {};
+  document.getElementById('info-name').textContent   = data.original_name || data.filename || '—';
+  document.getElementById('info-size').textContent   = formatBytes(data.file_size);
+  document.getElementById('info-dims').textContent   = fi.width ? fi.width + ' × ' + fi.height + ' px' : '—';
+  document.getElementById('info-format').textContent = fi.format || '—';
+  document.getElementById('info-mp').textContent     = fi.megapixels ? fi.megapixels + ' MP' : '—';
+  document.getElementById('info-mode').textContent   = fi.mode || '—';
+
+  // AI
+  const ai = data.ai_analysis || {};
+  renderAiScore(ai.score ?? 0);
+  renderSignals(ai.signals || []);
+
+  // Метадані по секціях
+  renderExifGrid('exif-grid', currentMetadata.exif || {}, 'exif', true);
+  renderExifGrid('camera-grid', currentMetadata.camera || {}, 'exif', true);
+  renderExifGrid('technical-grid', currentMetadata.technical || {}, 'exif', true);
+  renderReadonlyGrid('iptc-grid', currentMetadata.iptc || {});
+  renderReadonlyGrid('xmp-grid', currentMetadata.xmp || {});
+  renderGps(currentMetadata.gps || {});
+}
+
+// ── AI Score Ring ─────────────────────────────────────
+function renderAiScore(score) {
+  const numEl     = document.getElementById('ai-score-num');
+  const ringEl    = document.getElementById('score-ring-fill');
+  const verdictEl = document.getElementById('ai-verdict');
+  const summaryEl = document.getElementById('ai-summary');
+
+  numEl.textContent = Math.round(score);
+  ringEl.style.strokeDashoffset = 377 - (score / 100) * 377;
+
+  if (score < 25) {
+    ringEl.style.stroke = '#00d68f'; numEl.style.color = '#00d68f';
+    verdictEl.className = 'score-verdict verdict-real';
+    verdictEl.textContent = 'Скоріш за все — реальне';
+    summaryEl.textContent = 'Метадані та характеристики відповідають реальній фотографії.';
+  } else if (score < 55) {
+    ringEl.style.stroke = '#ffb347'; numEl.style.color = '#ffb347';
+    verdictEl.className = 'score-verdict verdict-suspicious';
+    verdictEl.textContent = 'Підозріло';
+    summaryEl.textContent = 'Деякі сигнали вказують на можливу AI-генерацію або редагування.';
+  } else {
+    ringEl.style.stroke = '#ff3b5c'; numEl.style.color = '#ff3b5c';
+    verdictEl.className = 'score-verdict verdict-ai';
+    verdictEl.textContent = 'Ймовірно — AI';
+    summaryEl.textContent = 'Виявлено значні ознаки AI-генерації. Метадані є підозрілими.';
+  }
+}
+
+// ── Signals ───────────────────────────────────────────
+function renderSignals(signals) {
+  const list = document.getElementById('signal-list');
+  if (!signals.length) {
+    list.innerHTML = '<div style="color:var(--text-muted);font-family:var(--mono);font-size:12px;padding:20px;text-align:center;">Сигналів не виявлено</div>';
+    return;
+  }
+  list.innerHTML = signals.map(s => `
+    <div class="signal-item">
+      <div class="signal-dot ${s.type}"></div>
+      <div class="signal-text">
+        <div class="signal-name">${escHtml(s.signal)}</div>
+        <div class="signal-desc">${escHtml(s.description)}</div>
+      </div>
+      <div class="signal-weight ${s.weight > 0 ? 'pos' : 'neg'}">${s.weight > 0 ? '+' : ''}${s.weight}</div>
+    </div>
+  `).join('');
+}
+
+// ── EXIF Grid (з редагуванням) ────────────────────────
+function renderExifGrid(gridId, obj, section, editable) {
+  const grid = document.getElementById(gridId);
+  const entries = Object.entries(obj);
+  if (!entries.length) {
+    grid.innerHTML = '<div style="color:var(--text-muted);font-family:var(--mono);font-size:12px;grid-column:1/-1;padding:20px;text-align:center;">Дані відсутні</div>';
+    return;
+  }
+  grid.innerHTML = entries.map(([k, v]) => {
+    const safeK = escHtml(k);
+    const safeV = escHtml(String(v));
+    const id    = 'ev-' + sanitizeId(gridId + '_' + k);
+    if (editable && currentIsJpeg) {
+      return `<div class="exif-item" id="${id}" onclick="startEdit('${section}','${safeK}',this)">
+        <div class="exif-key">${safeK}</div>
+        <div class="exif-val">${safeV}</div>
+      </div>`;
+    }
+    return `<div class="exif-item readonly">
+      <div class="exif-key">${safeK}</div>
+      <div class="exif-val">${safeV}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Readonly Grid (IPTC, XMP) ─────────────────────────
+function renderReadonlyGrid(gridId, obj) {
+  renderExifGrid(gridId, obj, '', false);
+}
+
+// ── Inline Edit ───────────────────────────────────────
+function startEdit(section, field, el) {
+  if (activeEditEl) cancelEdit();
+  if (!currentImageId || !currentIsJpeg) return;
+  activeEditEl = el;
+  const valEl = el.querySelector('.exif-val');
+  activeEditOriginal = valEl.textContent;
+  el.classList.add('editing');
+  el.onclick = null;
+  valEl.innerHTML = `
+    <input class="edit-input" id="edit-input-field" value="${escHtml(activeEditOriginal)}" onclick="event.stopPropagation()">
+    <div class="edit-actions">
+      <button class="btn-save"   onclick="saveEdit('${section}','${escHtml(field)}')">✓ Зберегти</button>
+      <button class="btn-cancel" onclick="cancelEdit()">✕</button>
+    </div>`;
+  document.getElementById('edit-input-field').focus();
+}
+
+async function saveEdit(section, field) {
+  const input  = document.getElementById('edit-input-field');
+  if (!input) return;
+  const newVal = input.value;
+  if (newVal === activeEditOriginal) { cancelEdit(); return; }
+  try {
+    const res  = await fetch('/api/image/' + currentImageId + '/edit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ edits: { [section + '.' + field]: newVal } })
+    });
+    const data = await res.json();
+    if (data.success) {
+      const valEl = activeEditEl.querySelector('.exif-val');
+      valEl.textContent = newVal;
+      activeEditEl.classList.remove('editing');
+      const capturedEl = activeEditEl;
+      activeEditEl.onclick = function() { startEdit(section, field, capturedEl); };
+      activeEditEl = null;
+      showToast('Поле "' + field + '" оновлено', 'success');
+      // Оновлюємо локальний стан
+      if (data.updated_metadata) {
+        currentMetadata = { ...currentMetadata, ...data.updated_metadata };
+      }
+    } else {
+      showToast(data.error || 'Помилка збереження', 'error');
+      cancelEdit();
+    }
+  } catch (err) {
+    showToast('Помилка: ' + err.message, 'error');
+    cancelEdit();
+  }
+}
+
+function cancelEdit() {
+  if (!activeEditEl) return;
+  const valEl = activeEditEl.querySelector('.exif-val');
+  if (valEl) valEl.textContent = activeEditOriginal;
+  activeEditEl.classList.remove('editing');
+  activeEditEl = null;
+}
+
+// ── GPS Map ───────────────────────────────────────────
+function renderGps(gps) {
+  const container  = document.getElementById('map-container');
+  const infoEl     = document.getElementById('gps-info');
+  const coordsEl   = document.getElementById('map-coords-overlay');
+  const gmapsBtn   = document.getElementById('map-gmaps-btn');
+  const lat = gps.latitude_decimal;
+  const lon = gps.longitude_decimal;
+
+  if (lat != null && lon != null) {
+    infoEl.innerHTML = `
+      <div class="exif-grid" style="grid-template-columns:repeat(3,1fr);gap:8px;">
+        <div class="exif-item readonly">
+          <div class="exif-key">Широта</div>
+          <div class="exif-val" style="color:var(--accent)">${lat.toFixed(6)}°</div>
+        </div>
+        <div class="exif-item readonly">
+          <div class="exif-key">Довгота</div>
+          <div class="exif-val" style="color:var(--accent)">${lon.toFixed(6)}°</div>
+        </div>
+        ${gps.GPSAltitude != null
+          ? `<div class="exif-item readonly"><div class="exif-key">Висота</div><div class="exif-val">${Number(gps.GPSAltitude).toFixed(1)} м</div></div>`
+          : '<div></div>'}
+      </div>`;
+
+    // Overlay координат
+    coordsEl.innerHTML = `📍 ${lat.toFixed(6)}, ${lon.toFixed(6)}${gps.GPSAltitude != null ? `<br>⛰ ${Number(gps.GPSAltitude).toFixed(1)} м` : ''}`;
+    coordsEl.style.display = 'block';
+
+    // Google Maps кнопка
+    gmapsBtn.href = `https://www.google.com/maps?q=${lat},${lon}`;
+    gmapsBtn.style.display = 'block';
+
+    // Leaflet map
+    container.innerHTML = '<div id="leaflet-map" style="height:360px;"></div>';
+    setTimeout(() => {
+      if (mapInstance) { mapInstance.remove(); mapInstance = null; }
+      mapInstance = L.map('leaflet-map', { zoomControl: true }).setView([lat, lon], 14);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
+        maxZoom: 19,
+      }).addTo(mapInstance);
+
+      // Кастомний маркер — пульсуючий кружок
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="
+          width:22px;height:22px;
+          background:var(--accent);
+          border:3px solid #fff;
+          border-radius:50%;
+          box-shadow:0 0 0 6px rgba(0,229,255,0.25),0 0 20px rgba(0,229,255,0.5);
+        "></div>`,
+        iconSize: [22, 22], iconAnchor: [11, 11],
+      });
+
+      L.marker([lat, lon], { icon })
+        .addTo(mapInstance)
+        .bindPopup(`
+          <div style="font-family:var(--mono);font-size:12px;line-height:1.7;">
+            <strong>📍 Місце зйомки</strong><br>
+            ${lat.toFixed(6)}, ${lon.toFixed(6)}
+            ${gps.GPSAltitude != null ? `<br>⛰ ${Number(gps.GPSAltitude).toFixed(1)} м` : ''}
+          </div>`, { maxWidth: 220 })
+        .openPopup();
+    }, 100);
+
+  } else {
+    infoEl.innerHTML = `<div style="color:var(--text-muted);font-family:var(--mono);font-size:12px;padding:8px 0;">
+      GPS-координати відсутні в метаданих цього зображення
+    </div>`;
+    coordsEl.style.display = 'none';
+    gmapsBtn.style.display = 'none';
+    container.innerHTML = `<div class="map-placeholder">
+      <span style="font-size:32px">🗺️</span>
+      <span>GPS-координати не знайдено</span>
+      <span style="font-size:10px;margin-top:4px;">Знято без геолокації або координати були видалені</span>
+    </div>`;
+  }
+}
+
+// ── Edit History ──────────────────────────────────────
+async function loadEditHistory() {
+  if (!currentImageId) return;
+  const log = document.getElementById('edit-history-log');
+  log.innerHTML = '<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:12px;text-align:center;">Завантаження...</div>';
+  try {
+    const res  = await fetch('/api/image/' + currentImageId + '/history');
+    const data = await res.json();
+    if (!data.history || !data.history.length) {
+      log.innerHTML = '<div style="color:var(--text-muted);font-family:var(--mono);font-size:12px;padding:20px;text-align:center;">Редагувань ще не було</div>';
+      return;
+    }
+    log.innerHTML = data.history.map(h => `
+      <div class="history-entry">
+        <span class="he-field">${escHtml(h.field)}</span>
+        <span class="he-old">${escHtml(h.old || '—')}</span>
+        <span class="he-new">${escHtml(h.new)}</span>
+        <span class="he-time">${(h.time || '').slice(0,19).replace('T',' ')}</span>
+      </div>`).join('');
+  } catch(e) {
+    log.innerHTML = '<div style="color:var(--danger);font-family:var(--mono);font-size:12px;padding:12px;">Помилка завантаження</div>';
+  }
+}
+
+// ── History Tab ───────────────────────────────────────
+async function loadHistory() {
+  const grid = document.getElementById('history-grid');
+  grid.innerHTML = '<div style="color:var(--text-dim);font-family:var(--mono);font-size:12px;padding:40px;text-align:center;grid-column:1/-1;">Завантаження...</div>';
+  try {
+    const res  = await fetch('/api/history');
+    const data = await res.json();
+    if (!data.images || !data.images.length) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+        <div class="empty-icon">📂</div>
+        <div>Ще не аналізовано жодного зображення</div>
+      </div>`;
+      return;
+    }
+    grid.innerHTML = data.images.map(img => {
+      const score = img.ai_score ?? 0;
+      const color = score < 25 ? '#00d68f' : score < 55 ? '#ffb347' : '#ff3b5c';
+      const label = score < 25 ? 'Реальне'   : score < 55 ? 'Підозріло' : 'AI';
+      const date  = (img.upload_time || '').slice(0,10);
+      return `<div class="history-card" onclick="loadImageById(${img.id})">
+        <div class="history-thumb">🖼️</div>
+        <div class="history-info">
+          <div class="history-name" title="${escHtml(img.name || img.original_name || '')}">${escHtml(img.name || img.original_name || '—')}</div>
+          <div class="history-meta">${img.width || '?'}×${img.height || '?'} · ${formatBytes(img.file_size || img.size)}</div>
+          <div class="history-meta">${date}</div>
+          <div class="history-score" style="background:${color}22;color:${color}">${Math.round(score)}% — ${label}</div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    grid.innerHTML = '<div style="color:var(--danger);font-family:var(--mono);font-size:12px;padding:40px;text-align:center;grid-column:1/-1;">Помилка завантаження історії</div>';
+  }
+}
+
+async function loadImageById(id) {
+  // Перемикаємо вкладку вручну без event
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-analyze').classList.add('active');
+  document.querySelector('.nav-btn').classList.add('active');
+
+  setLoading(true, 'Завантаження з бази даних...');
+  try {
+    const res  = await fetch('/api/image/' + id);
+    const data = await res.json();
+    if (data.error) { showToast(data.error, 'error'); return; }
+    renderResults(data, null, null);
+    showToast('Зображення завантажено з бази', 'success');
+  } catch(e) {
+    showToast('Помилка: ' + e.message, 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ── Compare ───────────────────────────────────────────
+async function loadCompare() {
+  try {
+    const res  = await fetch('/api/compare');
+    const data = await res.json();
+
+    const mb = document.getElementById('metadata-compare-body');
+    if (mb) mb.innerHTML = (data.metadata_extraction || []).map(r => `
+      <tr>
+        <td>${escHtml(r.approach)}</td>
+        <td>${r.speed_ms} мс</td>
+        <td class="${r.exif_support ? 'check' : 'cross'}">${r.exif_support ? '✓' : '✗'}</td>
+        <td class="${r.iptc_support ? 'check' : 'cross'}">${r.iptc_support ? '✓' : '✗'}</td>
+        <td class="${r.xmp_support ? 'check' : 'cross'}">${r.xmp_support ? '✓' : '✗'}</td>
+        <td>${escHtml(r.privacy)}</td>
+        <td>${escHtml(r.cost)}</td>
+      </tr>`).join('');
+
+    const ab = document.getElementById('ai-compare-body');
+    if (ab) ab.innerHTML = (data.ai_detection || []).map(r => `
+      <tr>
+        <td>${escHtml(r.model)}</td>
+        <td>
+          <div class="accuracy-bar"><div class="accuracy-fill" style="width:${r.accuracy_percent}%"></div></div>
+          ${r.accuracy_percent}%
+        </td>
+        <td>${r.speed_ms} мс</td>
+        <td>${r.false_positive_rate}%</td>
+        <td>${escHtml(r.cost)}</td>
+      </tr>`).join('');
+  } catch(e) {}
+}
+
+// ── Utils ─────────────────────────────────────────────
+function formatBytes(b) {
+  if (!b) return '—';
+  if (b < 1024)    return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(2) + ' MB';
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function sanitizeId(str) {
+  return String(str).replace(/[^a-zA-Z0-9_-]/g,'_');
+}
+
+// ── Init ──────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // Підтягуємо порівняльні таблиці відразу, вони у вкладці "Про систему"
+});
+</script>
+</body>
+</html>
