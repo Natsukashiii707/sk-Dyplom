@@ -24,7 +24,6 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-# ── Серіалізація EXIF-значень ──────────────────────────────────────────────────
 
 def serialize_exif_value(val):
     if hasattr(val, 'numerator') and hasattr(val, 'denominator'):
@@ -37,7 +36,6 @@ def serialize_exif_value(val):
             s = val.decode('utf-8', errors='replace')
         except Exception:
             s = str(val)
-        # Спроба перекодувати latin1→utf-8 для кирилиці
         if 'Ð' in s or 'Ñ' in s:
             try:
                 s2 = val.decode('latin1').encode('latin1').decode('utf-8', errors='replace')
@@ -56,8 +54,6 @@ def serialize_exif_value(val):
         return str(val)
 
 
-# ── Вилучення EXIF ────────────────────────────────────────────────────────────
-
 def get_exif_data(image):
     exif_data = {}
     try:
@@ -73,8 +69,6 @@ def get_exif_data(image):
         pass
     return exif_data
 
-
-# ── Розбивка метаданих на секції ──────────────────────────────────────────────
 
 CAMERA_FIELDS = {
     'Make', 'Model', 'LensModel', 'LensMake', 'FocalLength',
@@ -109,7 +103,6 @@ def split_exif_sections(exif_data):
     return camera, technical, other
 
 
-# ── GPS ───────────────────────────────────────────────────────────────────────
 
 def get_gps_info(exif_data):
     gps_info = {}
@@ -143,30 +136,25 @@ def get_gps_info(exif_data):
     return gps_info
 
 
-# ── AI-евристика ──────────────────────────────────────────────────────────────
 
 def ai_heuristics(exif_data, file_info=None):
     score = 0
     signals = []
 
-    # 1. Відсутність EXIF (+25)
     if not exif_data:
         score += 25
         signals.append({'signal': 'Відсутність EXIF', 'description': 'EXIF-дані відсутні — характерно для AI-зображень', 'type': 'warning', 'weight': 25})
 
-    # 2. AI-слово у Software (+40)
     software = str(exif_data.get('Software', '')).lower()
     if software and any(w in software for w in ('diffusion', 'midjourney', 'dalle', 'stable', 'gencraft', 'invoke', 'comfy')):
         score += 40
         signals.append({'signal': 'AI-інструмент у Software', 'description': str(exif_data.get('Software')), 'type': 'danger', 'weight': 40})
 
-    # 3. XMP CreatorTool (+35)
     creator = exif_data.get('XMP:CreatorTool') or exif_data.get('CreatorTool', '')
     if creator and any(w in str(creator).lower() for w in ('ai', 'midjourney', 'diffusion', 'dalle')):
         score += 35
         signals.append({'signal': 'XMP CreatorTool — AI', 'description': str(creator), 'type': 'danger', 'weight': 35})
 
-    # 4. Стандартні AI-розміри (+12)
     AI_SIZES = {(512, 512), (768, 768), (1024, 1024), (768, 1344), (1344, 768),
                 (512, 768), (768, 512), (1024, 1792), (1792, 1024)}
     if file_info:
@@ -175,12 +163,10 @@ def ai_heuristics(exif_data, file_info=None):
             score += 12
             signals.append({'signal': 'Стандартний AI-розмір', 'description': f'{w}×{h} px', 'type': 'warning', 'weight': 12})
 
-    # 5. Відсутні ключові поля камери (+18)
     if exif_data and all(not exif_data.get(k) for k in ('DateTime', 'Model', 'LensModel')):
         score += 18
         signals.append({'signal': 'Відсутні дані камери', 'description': 'Немає дати, моделі камери та об\'єктиву', 'type': 'warning', 'weight': 18})
 
-    # Позитивні сигнали (знижують оцінку)
     if exif_data and any(exif_data.get(k) for k in ('Model', 'LensModel', 'DateTime')):
         score = max(0, score - 15)
         signals.append({'signal': 'Присутні метадані камери', 'description': 'Реальна фотографія зазвичай має ці дані', 'type': 'good', 'weight': -15})
@@ -193,7 +179,6 @@ def ai_heuristics(exif_data, file_info=None):
     return {'score': score, 'signals': signals}
 
 
-# ── IPTC ──────────────────────────────────────────────────────────────────────
 
 def get_iptc_data(path):
     """Вилучає IPTC-метадані з файлу через iptcinfo3."""
@@ -201,7 +186,6 @@ def get_iptc_data(path):
         import iptcinfo3
         info = iptcinfo3.IPTCInfo(path, force=True)
         result = {}
-        # Мапа кодів IPTC на людські назви
         IPTC_TAGS = {
             5: 'ObjectName', 7: 'EditStatus', 10: 'Urgency', 15: 'Category',
             20: 'SupplementalCategory', 22: 'FixtureIdentifier', 25: 'Keywords',
@@ -233,7 +217,6 @@ def get_iptc_data(path):
         return None
 
 
-# ── XMP ───────────────────────────────────────────────────────────────────────
 
 def get_xmp_data(image):
     """Вилучає XMP-метадані з PIL Image.info."""
@@ -253,7 +236,6 @@ def get_xmp_data(image):
         root = ET.fromstring(xmp_str)
         for elem in root.iter():
             tag = elem.tag
-            # Прибираємо namespace
             if '}' in tag:
                 tag = tag.split('}', 1)[1]
             if elem.text and elem.text.strip():
@@ -263,7 +245,6 @@ def get_xmp_data(image):
         return None
 
 
-# ── Thumbnail ─────────────────────────────────────────────────────────────────
 
 def make_thumbnail(image_path):
     try:
@@ -284,7 +265,6 @@ def make_thumbnail(image_path):
         return None
 
 
-# ── Endpoints ─────────────────────────────────────────────────────────────────
 
 STATIC_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'ico', 'svg', 'webp',
                      'css', 'js', 'woff', 'woff2', 'ttf', 'mp4', 'webm'}
@@ -330,7 +310,6 @@ def upload():
         os.remove(path)
         return jsonify({'error': f'Не вдалося відкрити зображення: {e}'}), 400
 
-    # Збираємо розміри ДО thumbnail
     file_info = {
         'width': image.width,
         'height': image.height,
@@ -346,7 +325,6 @@ def upload():
     xmp_data = get_xmp_data(image)
     ai = ai_heuristics(exif_data, file_info)
 
-    # Thumbnail окремо — не впливає на file_info
     thumb_b64 = make_thumbnail(path)
 
     metadata = {
@@ -501,10 +479,8 @@ def edit_exif(image_id):
         exif_bytes = img.info.get('exif', b'')
         exif_dict = piexif.load(exif_bytes) if exif_bytes else {'0th': {}, 'Exif': {}, 'GPS': {}, '1st': {}}
 
-        # Збираємо старі значення перед змінами
         old_values = {}
 
-        # Побудуємо зворотну мапу: назва тегу → (IFD, tag_id)
         tag_map = {}
         for ifd_name, ifd_tags in [('0th', piexif.ImageIFD), ('Exif', piexif.ExifIFD)]:
             for attr in dir(ifd_tags):
@@ -515,7 +491,6 @@ def edit_exif(image_id):
                     tag_map[attr] = (ifd_name, tag_id)
 
         for key, new_val in edits.items():
-            # Очікуємо формат "exif.FieldName" або "technical.FieldName" тощо
             parts = key.split('.', 1)
             field = parts[1] if len(parts) == 2 else parts[0]
 
@@ -524,14 +499,12 @@ def edit_exif(image_id):
 
             ifd_name, tag_id = tag_map[field]
 
-            # Зберігаємо старе значення
             old_raw = exif_dict.get(ifd_name, {}).get(tag_id)
             if old_raw is not None:
                 old_values[field] = old_raw.decode('utf-8', errors='replace') if isinstance(old_raw, bytes) else str(old_raw)
             else:
                 old_values[field] = None
 
-            # Записуємо нове (ASCII)
             try:
                 exif_dict.setdefault(ifd_name, {})[tag_id] = new_val.encode('utf-8', errors='replace')
             except Exception:
@@ -540,7 +513,6 @@ def edit_exif(image_id):
         new_exif_bytes = piexif.dump(exif_dict)
         img.save(path, exif=new_exif_bytes)
 
-        # Зберігаємо в БД з правильним old_value
         try:
             conn = get_db()
             c = conn.cursor()
@@ -557,7 +529,6 @@ def edit_exif(image_id):
         except Exception as e:
             print('DB edit error:', e)
 
-        # Повертаємо оновлені метадані
         img2 = Image.open(path)
         updated_exif = get_exif_data(img2)
         camera, technical, _ = split_exif_sections(updated_exif)
