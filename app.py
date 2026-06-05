@@ -61,7 +61,6 @@ def get_exif_data(image):
         if exif_raw:
             for tag, value in exif_raw.items():
                 decoded = ExifTags.TAGS.get(tag, str(tag))
-                # Пропускаємо бінарні поля без сенсу для користувача
                 if decoded in ('MakerNote', 'UserComment') and isinstance(value, bytes) and len(value) > 64:
                     continue
                 exif_data[decoded] = serialize_exif_value(value)
